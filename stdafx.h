@@ -24,7 +24,6 @@
 #pragma warning(push)
 #pragma warning(disable : 4324)
 #include "d3d12.h"
-#include "d3d12_1.h"
 #include "d3dx12.h"
 #pragma warning(pop)
 #include <D3Dcompiler.h>

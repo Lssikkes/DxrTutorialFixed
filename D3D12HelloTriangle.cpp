@@ -379,18 +379,15 @@ void D3D12HelloTriangle::PopulateCommandList()
 
     // The ray generation shaders are always at the beginning of the SBT. In this example we have
     // only one RG, so the size of this SBT sections is m_sbtEntrySize.
-    uint32_t rayGenerationSectionSizeInBytes = m_sbtHelper.GetRayGenSectionSize();
-    desc.RayGenerationShaderRecord.StartAddress = m_sbtStorage->GetGPUVirtualAddress();
-    desc.RayGenerationShaderRecord.SizeInBytes = rayGenerationSectionSizeInBytes;
+    desc.RayGenerationShaderRecord.StartAddress = m_sbtStorage->GetGPUVirtualAddress() + m_sbtHelper.GetRayGenOffset();
+    desc.RayGenerationShaderRecord.SizeInBytes = m_sbtHelper.GetRayGenSectionSize();
 
     // The miss shaders are in the second SBT section, right after the ray generation shader. We
     // have one miss shader for the camera rays and one for the shadow rays, so this section has a
     // size of 2*m_sbtEntrySize. We also indicate the stride between the two miss shaders, which is
     // the size of a SBT entry
-    uint32_t missSectionSizeInBytes = m_sbtHelper.GetMissSectionSize();
-    desc.MissShaderTable.StartAddress =
-        m_sbtStorage->GetGPUVirtualAddress() + rayGenerationSectionSizeInBytes;
-    desc.MissShaderTable.SizeInBytes = missSectionSizeInBytes;
+    desc.MissShaderTable.StartAddress = m_sbtStorage->GetGPUVirtualAddress() + m_sbtHelper.GetMissSectionOffset();
+    desc.MissShaderTable.SizeInBytes = m_sbtHelper.GetMissSectionSize();
     desc.MissShaderTable.StrideInBytes = m_sbtHelper.GetMissEntrySize();
 
     // The hit groups section start after the miss shaders. In this sample we have 4 hit groups: 2
@@ -398,23 +395,25 @@ void D3D12HelloTriangle::PopulateCommandList()
     // same geometry from a shadow ray) and 2 for the plane. We also indicate the stride between the
     // two miss shaders, which is the size of a SBT entry #Pascal: experiment with different sizes
     // for the SBT entries
-    uint32_t hitGroupsSectionSize = m_sbtHelper.GetHitGroupSectionSize();
-    desc.HitGroupTable.StartAddress = m_sbtStorage->GetGPUVirtualAddress() +
-                                      rayGenerationSectionSizeInBytes + missSectionSizeInBytes;
-    desc.HitGroupTable.SizeInBytes = hitGroupsSectionSize;
+    desc.HitGroupTable.StartAddress = m_sbtStorage->GetGPUVirtualAddress() + m_sbtHelper.GetHitGroupOffset();
+    desc.HitGroupTable.SizeInBytes = m_sbtHelper.GetHitGroupSectionSize();
     desc.HitGroupTable.StrideInBytes = m_sbtHelper.GetHitGroupEntrySize();
 
     // Dimensions of the image to render, identical to a kernel launch dimension
     desc.Width = GetWidth();
     desc.Height = GetHeight();
+	desc.Depth = 1;
+
+
 
     // Before Windows 10 RS5, we need to cast the command list into a raytracing command list to
     // access the ray dispatch method
-    ID3D12CommandListRaytracingPrototype* rtCmdList;
+    ID3D12GraphicsCommandList4* rtCmdList;
     ThrowIfFailed(m_commandList->QueryInterface(IID_PPV_ARGS(&rtCmdList)));
 
     // Dispatch the rays and write to the raytracing output
-    rtCmdList->DispatchRays(m_rtStateObject.Get(), &desc);
+	rtCmdList->SetPipelineState1(m_rtStateObject.Get());
+    rtCmdList->DispatchRays(&desc);
 
     // The raytracing output needs to be copied to the actual render target used for display. For
     // this, we need to transition the raytracing output from a UAV to a copy source, and the render
@@ -476,11 +475,11 @@ void D3D12HelloTriangle::ActivateExperimentalFeatures()
 {
   // Temporary: Before Win10 RS5 raytracing and raster/raytracing compatibilities are in a prototype
   // state. Therefore, they need to be explicitly enabled BEFORE creating the device
-  static const GUID guids[] = {D3D12RaytracingPrototype};
+  //static const GUID guids[] = {D3D12RaytracingPrototype};
 
-  HRESULT hr = D3D12EnableExperimentalFeatures(1, guids, nullptr, nullptr);
+  //HRESULT hr = D3D12EnableExperimentalFeatures(1, guids, nullptr, nullptr);
 
-  if (FAILED(hr))
+  /*if (FAILED(hr))
   {
     printf("Could not enable raytracing (D3D12EnableExperimentalFeatures() "
            "failed, hr=0x%X).\n"
@@ -493,7 +492,7 @@ void D3D12HelloTriangle::ActivateExperimentalFeatures()
            "D3D12EnableExperimentalFeatures)\n\n",
            hr);
   }
-  ThrowIfFailed(hr);
+  ThrowIfFailed(hr);*/
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -546,7 +545,7 @@ D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBotto
 
   // Before Win10 RS5, we need to cast the command list into a raytracing command list to access the
   // AS building method
-  ID3D12CommandListRaytracingPrototype* rtCmdList;
+  ID3D12GraphicsCommandList4* rtCmdList;
   ThrowIfFailed(m_commandList->QueryInterface(IID_PPV_ARGS(&rtCmdList)));
 
   // Build the acceleration structure. Note that this call integrates a barrier
@@ -602,7 +601,7 @@ void D3D12HelloTriangle::CreateTopLevelAS(
 
   // Before Win10 RS5, we need to cast the command list into a raytracing command list to access the
   // AS building method
-  ID3D12CommandListRaytracingPrototype* rtCmdList;
+  ID3D12GraphicsCommandList4* rtCmdList;
   ThrowIfFailed(m_commandList->QueryInterface(IID_PPV_ARGS(&rtCmdList)));
 
   // After all the buffers are allocated, or if only an update is required, we can build the

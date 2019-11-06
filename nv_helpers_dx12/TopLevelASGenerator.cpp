@@ -47,6 +47,9 @@ buffer needs to be kept until the command list execution is finished.
 
 #include "TopLevelASGenerator.h"
 
+#include <string>
+#include <stdexcept>
+
 // Helper to compute aligned buffer sizes
 #ifndef ROUND_UP
 #define ROUND_UP(v, powerOf2Alignment) (((v) + (powerOf2Alignment)-1) & ~((powerOf2Alignment)-1))
@@ -83,7 +86,7 @@ void TopLevelASGenerator::AddInstance(
 // structure, as well as the size of the resulting structure. The allocation of
 // the buffers is then left to the application
 void TopLevelASGenerator::ComputeASBufferSizes(
-    ID3D12DeviceRaytracingPrototype* device, // Device on which the build will be performed
+    ID3D12Device5* device, // Device on which the build will be performed
     bool allowUpdate,                        // If true, the resulting acceleration structure will
                                              // allow iterative updates
     UINT64* scratchSizeInBytes,              // Required scratch memory on the GPU to build
@@ -103,8 +106,7 @@ void TopLevelASGenerator::ComputeASBufferSizes(
 
   // Describe the work being requested, in this case the construction of a
   // (possibly dynamic) top-level hierarchy, with the given instance descriptors
-  D3D12_GET_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO_DESC
-  prebuildDesc = {};
+  D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS prebuildDesc = {};
   prebuildDesc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
   prebuildDesc.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
   prebuildDesc.NumDescs = static_cast<UINT>(m_instances.size());
@@ -147,7 +149,7 @@ void TopLevelASGenerator::ComputeASBufferSizes(
 // be done in place: the result and previousResult pointers can be the same.
 void TopLevelASGenerator::Generate(
     ID3D12GraphicsCommandList* commandList, // Command list on which the build will be enqueued
-    ID3D12CommandListRaytracingPrototype*
+    ID3D12GraphicsCommandList4*
         rtCmdList,                     // Same command list, casted into a raytracing list. This
                                        // will not be needed anymore with Windows 10 RS5.
     ID3D12Resource* scratchBuffer,     // Scratch buffer used by the builder to
@@ -227,19 +229,17 @@ void TopLevelASGenerator::Generate(
   // Create a descriptor of the requested builder work, to generate a top-level
   // AS from the input parameters
   D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
-  buildDesc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-  buildDesc.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-  buildDesc.InstanceDescs = descriptorsBuffer->GetGPUVirtualAddress();
-  buildDesc.NumDescs = instanceCount;
-  buildDesc.DestAccelerationStructureData = {resultBuffer->GetGPUVirtualAddress(),
-                                             m_resultSizeInBytes};
-  buildDesc.ScratchAccelerationStructureData = {scratchBuffer->GetGPUVirtualAddress(),
-                                                m_scratchSizeInBytes};
+  buildDesc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+  buildDesc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+  buildDesc.Inputs.InstanceDescs = descriptorsBuffer->GetGPUVirtualAddress();
+  buildDesc.Inputs.NumDescs = instanceCount;
+  buildDesc.DestAccelerationStructureData = {resultBuffer->GetGPUVirtualAddress()};
+  buildDesc.ScratchAccelerationStructureData = {scratchBuffer->GetGPUVirtualAddress()   };
   buildDesc.SourceAccelerationStructureData = pSourceAS;
-  buildDesc.Flags = flags;
+  buildDesc.Inputs.Flags = flags;
 
   // Build the top-level AS
-  rtCmdList->BuildRaytracingAccelerationStructure(&buildDesc);
+  rtCmdList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr );
 
   // Wait for the builder to complete by setting a barrier on the resulting
   // buffer. This can be important in case the rendering is triggered

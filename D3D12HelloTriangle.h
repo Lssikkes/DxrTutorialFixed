@@ -78,7 +78,8 @@ private:
 
   // #DXR
   void ActivateExperimentalFeatures();
-  CComQIPtr<ID3D12DeviceRaytracingPrototype> m_rtDevice;
+  
+  CComQIPtr<ID3D12Device5> m_rtDevice;
 
   void OnKeyUp(UINT8 key) override;
   bool m_raster = true;
@@ -131,10 +132,10 @@ private:
   ComPtr<ID3D12RootSignature> m_shadowSignature;
 
   /// Ray tracing pipeline state
-  ComPtr<ID3D12StateObjectPrototype> m_rtStateObject;
+  ComPtr<ID3D12StateObject> m_rtStateObject;
   /// Ray tracing pipeline state properties, retaining the shader identifiers
   /// to use in the Shader Binding Table
-  ComPtr<ID3D12StateObjectPropertiesPrototype> m_rtStateObjectProps;
+  ComPtr<ID3D12StateObjectProperties> m_rtStateObjectProps;
 
   // #DXR
   void CreateRaytracingOutputBuffer();

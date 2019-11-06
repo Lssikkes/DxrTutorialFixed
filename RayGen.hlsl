@@ -8,6 +8,8 @@ RaytracingAccelerationStructure SceneBVH : register(t0);
 
 [shader("raygeneration")] 
 void RayGen() {
+
+	
 // Initialize the ray payload
     HitInfo payload;
     payload.colorAndDistance = float4(0, 0, 0, 0);
@@ -15,7 +17,7 @@ void RayGen() {
 // Get the location within the dispatched 2D grid of work items
 // (often maps to pixels, so this could represent a pixel coordinate).
     uint2 launchIndex = DispatchRaysIndex();
-    float2 dims = float2(DispatchRaysDimensions());
+    float2 dims = float2(DispatchRaysDimensions().xy);
     float2 d = (((launchIndex.xy + 0.5f) / dims.xy) * 2.f - 1.f);
 
 // Define a ray, consisting of origin, direction, and the t-interval

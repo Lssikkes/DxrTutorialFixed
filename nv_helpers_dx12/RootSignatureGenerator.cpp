@@ -37,6 +37,9 @@ pointers will be bound.
 
 #include "RootSignatureGenerator.h"
 
+#include <string>
+#include <stdexcept>
+
 namespace nv_helpers_dx12
 {
 
